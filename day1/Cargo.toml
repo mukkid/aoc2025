@@ -1,0 +1,13 @@
+[package]
+name = "day1"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+debug = true
+split-debuginfo = "packed"
+
+[build]
+rustflags = ["-C", "force-frame-pointers=yes"]
+
+[dependencies]
