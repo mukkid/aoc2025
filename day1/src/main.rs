@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 fn main() {
-    let f = File::open("test.txt").unwrap();
+    let f = File::open("input.txt").unwrap();
     let f = BufReader::new(f);
     let mut dial = 50;
     let mut zero_count = 0;
@@ -13,10 +13,12 @@ fn main() {
             // L = b0100_1100
             let magnitude = &l[1..].parse::<i32>().unwrap();
             let v = unsafe { magnitude.unchecked_mul(direction.into()) };
-            dial += v % 100;
-            dial %= 100;
-            if dial == 0 {
-                zero_count += 1;
+            for _ in 1..=*magnitude {
+                dial += direction;
+                dial = dial.rem_euclid(100);
+                if dial == 0 {
+                    zero_count += 1;
+                }
             }
         };
     }
