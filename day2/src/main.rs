@@ -1,9 +1,8 @@
 fn main() {
     let input = String::from(include_str!("input.txt"));
-    let test = "1234";
-    dbg!(create_repeated_number(test, 2));
     let output = solve2(input);
     println!("{output}");
+    println!("DONE");
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -13,15 +12,16 @@ struct Range {
 }
 
 fn solve(input: String) -> i64 {
-    let invalids: i64 = input.trim()
+    let invalids: i64 = input
+        .trim()
         .split(",")
         .map(|c| {
             let (lower, upper) = c
                 .split_once("-")
                 .map(|(l, u)| (l.parse::<i64>().unwrap(), u.parse::<i64>().unwrap()))
                 .unwrap();
-                let r = Range { lower, upper };
-                check_ranges(r)
+            let r = Range { lower, upper };
+            check_ranges(r)
         })
         .flatten()
         .sum();
@@ -29,19 +29,32 @@ fn solve(input: String) -> i64 {
 }
 
 fn solve2(input: String) -> i64 {
-    let invalids: i64 = input.trim()
-        .split(",")
-        .map(|c| {
-            let (lower, upper) = c
-                .split_once("-")
+    input
+        .trim()
+        .split(',')
+        .map(|range| {
+            let (lower, upper) = range
+                .split_once('-')
                 .map(|(l, u)| (l.parse::<i64>().unwrap(), u.parse::<i64>().unwrap()))
                 .unwrap();
-                let r = Range { lower, upper };
-                check_ranges(r)
+            (lower..=upper).filter(|&n| is_invalid(n)).sum::<i64>()
         })
-        .flatten()
-        .sum();
-    invalids
+        .sum()
+}
+
+fn is_invalid(n: i64) -> bool {
+    let s = n.to_string();
+    let len = s.len();
+
+    for pattern_len in 1..=len / 2 {
+        if len % pattern_len == 0 {
+            let pattern = &s[..pattern_len];
+            if s == pattern.repeat(len / pattern_len) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn check_ranges(r: Range) -> Vec<i64> {
@@ -66,23 +79,13 @@ fn check_ranges(r: Range) -> Vec<i64> {
     nums
 }
 
-fn create_repeated_number(num_as_string: &str, repititions: usize) -> Vec<String> {
-    let mut nums: Vec<String> = Vec::new();
-    let len = num_as_string.len();
-    for i in 1..num_as_string.len() {
-        let d = String::from(&num_as_string[0..i]);
-        let mut num = String::new();
-        num.push_str(&d.repeat(repititions));
-        nums.push(num);
-    }
-    nums
-}
-
 #[cfg(test)]
 mod test {
+    const TEST_INPUT: &str = include_str!("test.txt");
+
     #[test]
     fn part1() {
-        let input = String::from(include_str!("test.txt"));
+        let input = String::from(TEST_INPUT);
         let output = crate::solve(input);
         let expected = 1227775554;
         assert_eq!(output, expected);
@@ -90,7 +93,7 @@ mod test {
 
     #[test]
     fn part2() {
-        let input = String::from(include_str!("test.txt"));
+        let input = String::from(TEST_INPUT);
         let output = crate::solve2(input);
         let expected = 4174379265;
         assert_eq!(output, expected);
