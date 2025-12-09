@@ -80,19 +80,19 @@ fn compress_ranges(ranges: Vec<Range>) -> u64 {
             for second in idx+1..range.len() {
                 if range[first].contains(range[second].lower) {
                     range[first].upper = range[first].upper.max(range[second].upper);
-                    range.remove(second);
+                    range.swap_remove(second);
                     continue 'outer
                 } else if range[first].contains(range[second].upper) {
                     range[first].lower = range[first].lower.min(range[second].lower);
-                    range.remove(second);
+                    range.swap_remove(second);
                     continue 'outer
                 } else if range[second].contains(range[first].lower) {
                     range[second].upper = range[second].upper.max(range[first].upper);
-                    range.remove(first);
+                    range.swap_remove(first);
                     continue 'outer
                 } else if range[second].contains(range[first].upper) {
                     range[second].lower = range[second].lower.min(range[first].lower);
-                    range.remove(first);
+                    range.swap_remove(first);
                     continue 'outer
                 }
             }
