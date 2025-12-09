@@ -14,7 +14,8 @@ impl Matrix {
     fn from_bytes(input_bytes: &[u8]) -> Self {
         let cols = input_bytes.iter().position(|&c| c == b'\n').unwrap_or(0);
         let rows = input_bytes.iter().filter(|&c| *c == b'\n').count();
-        let filtered_input: Vec<u8> = Vec::from_iter(input_bytes.iter().copied().filter(|&c| c != b'\n'));
+        let filtered_input: Vec<u8> =
+            Vec::from_iter(input_bytes.iter().copied().filter(|&c| c != b'\n'));
         Self {
             grid: filtered_input,
             rows,
@@ -51,15 +52,17 @@ fn solve1(input_bytes: &[u8]) -> usize {
             m.get_at((row, col + 1)),
             m.get_at((row + 1, col - 1)),
             m.get_at((row + 1, col)),
-            m.get_at((row + 1, col + 1))
+            m.get_at((row + 1, col + 1)),
         ];
-        let rolls = neighbors.iter().filter(|&c| matches!(*c, Some(b'@'))).count();
+        let rolls = neighbors
+            .iter()
+            .filter(|&c| matches!(*c, Some(b'@')))
+            .count();
         if rolls < 4 {
             count += 1;
         }
     }
     count
-    
 }
 
 fn solve2(input_bytes: &[u8]) -> usize {
@@ -81,20 +84,22 @@ fn solve2(input_bytes: &[u8]) -> usize {
                 m.get_at((row, col + 1)),
                 m.get_at((row + 1, col - 1)),
                 m.get_at((row + 1, col)),
-                m.get_at((row + 1, col + 1))
+                m.get_at((row + 1, col + 1)),
             ];
-            let rolls = neighbors.iter().filter(|&c| matches!(*c, Some(b'@'))).count();
+            let rolls = neighbors
+                .iter()
+                .filter(|&c| matches!(*c, Some(b'@')))
+                .count();
             if rolls < 4 {
                 count += 1;
                 m.grid[idx] = b'.';
             }
         }
         if m.grid == grid {
-            break
+            break;
         }
     }
     count
-    
 }
 
 fn main() {
