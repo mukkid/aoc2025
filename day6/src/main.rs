@@ -1,34 +1,56 @@
-use ndarray::Array2;
+const INPUT_STR: &str = include_str!("input.txt");
 
 fn main() {
-    println!("Hello, world!");
+    let out1 = solve1(INPUT_STR);
+    println!("{out1}");
 }
 
 #[derive(Debug, Copy, Clone)]
-enum CentiMath<'a> {
-    Number(u32),
-    Operator(&'a str)
+enum CentiMath {
+    Number(u64),
+    Mul,
+    Add,
 }
 
-fn transpose<'a>(matrix: Vec<Vec<CentiMath<'a>>>) -> Vec<Vec<CentiMath<'a>>> {
+fn transpose<'a>(matrix: Vec<Vec<CentiMath>>) -> Vec<Vec<CentiMath>> {
     (0..matrix[0].len())
         .map(|col| matrix.iter().map(|row| row[col]).collect())
         .collect()
 }
 
-fn solve1(input_str: &str) -> u32 {
+fn solve1(input_str: &str) -> u64 {
     let input_grids: Vec<Vec<CentiMath>> = input_str.lines().map(|s| {
         s.split_whitespace().map(|sp|
-        match sp.parse::<u32>() {
+        match sp.trim().parse::<u64>() {
             Ok(n) => CentiMath::Number(n),
-            Err(_) => CentiMath::Operator(sp),
+            Err(_) => match sp {
+                "*" => CentiMath::Mul,
+                "+" => CentiMath::Add,
+                _ => unreachable!()
+            },
         }).collect()
     }).collect();
     let t_grid = transpose(input_grids);
-    dbg!(t_grid);
-    0
+    t_grid.into_iter().map(|v| compress(v)).sum()
 }
 
+fn compress(input_vec: Vec<CentiMath>) ->  u64 {
+    let mut v_iter = input_vec.iter().rev();
+    let Some(o) = v_iter.next() else {panic!("not an operator")};
+    match o {
+        CentiMath::Mul => v_iter.fold(1, |acc, &n| {
+            if let CentiMath::Number(num) = n {
+                acc * num
+            } else { panic!("not a number") }
+        }),
+        CentiMath::Add => v_iter.fold(0, |acc, &n| {
+            if let CentiMath::Number(num) = n {
+                acc + num
+            } else { panic!("not a number") }
+        }),
+        CentiMath::Number(_) => unreachable!(),
+    }
+}
 
 #[cfg(test)]
 mod test {
