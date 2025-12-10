@@ -8,9 +8,15 @@ fn main() {
 #[derive(Debug, Copy, Clone)]
 enum CentiMath {
     Number(u64),
+    Operator(CentiOperator)
+}
+
+#[derive(Debug, Copy, Clone)]
+enum CentiOperator {
     Mul,
     Add,
 }
+
 
 fn transpose<'a>(matrix: Vec<Vec<CentiMath>>) -> Vec<Vec<CentiMath>> {
     (0..matrix[0].len())
@@ -24,8 +30,8 @@ fn solve1(input_str: &str) -> u64 {
         match sp.trim().parse::<u64>() {
             Ok(n) => CentiMath::Number(n),
             Err(_) => match sp {
-                "*" => CentiMath::Mul,
-                "+" => CentiMath::Add,
+                "*" => CentiMath::Operator(CentiOperator::Mul),
+                "+" => CentiMath::Operator(CentiOperator::Add),
                 _ => unreachable!()
             },
         }).collect()
@@ -36,19 +42,18 @@ fn solve1(input_str: &str) -> u64 {
 
 fn compress(input_vec: Vec<CentiMath>) ->  u64 {
     let mut v_iter = input_vec.iter().rev();
-    let Some(o) = v_iter.next() else {panic!("not an operator")};
+    let Some(CentiMath::Operator(o)) = v_iter.next() else {panic!("not an operator")};
     match o {
-        CentiMath::Mul => v_iter.fold(1, |acc, &n| {
+        CentiOperator::Mul => v_iter.fold(1, |acc, &n| {
             if let CentiMath::Number(num) = n {
                 acc * num
             } else { panic!("not a number") }
         }),
-        CentiMath::Add => v_iter.fold(0, |acc, &n| {
+        CentiOperator::Add => v_iter.fold(0, |acc, &n| {
             if let CentiMath::Number(num) = n {
                 acc + num
             } else { panic!("not a number") }
         }),
-        CentiMath::Number(_) => unreachable!(),
     }
 }
 
