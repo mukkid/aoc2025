@@ -13,7 +13,7 @@ fn main() {
 enum CentiMath {
     Number(u64),
     Operator(CentiOperator),
-    Blank
+    Blank,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -82,28 +82,30 @@ fn solve2(input_bytes: &[u8]) -> u64 {
         let mut nums = Vec::new();
         let mut op = CentiOperator::Add;
         for r in row.rows() {
-            let m: Vec<_> = r.iter().map(|&c| match *c {
-                48..=57 => CentiMath::Number((c - b'0') as u64),
-                42 => CentiMath::Operator(CentiOperator::Mul),
-                43 => CentiMath::Operator(CentiOperator::Add),
-                32 => CentiMath::Blank,
-                _ => unreachable!()
-            }).rev().collect();
+            let m: Vec<_> = r
+                .iter()
+                .map(|&c| match *c {
+                    48..=57 => CentiMath::Number((c - b'0') as u64),
+                    42 => CentiMath::Operator(CentiOperator::Mul),
+                    43 => CentiMath::Operator(CentiOperator::Add),
+                    32 => CentiMath::Blank,
+                    _ => unreachable!(),
+                })
+                .rev()
+                .collect();
             if let CentiMath::Operator(o) = &m[0] {
                 op = *o;
             }
-            let val = &m[1..].iter().rev().fold(0, |acc, e| {
-                match e {
-                    CentiMath::Number(n) => acc * 10 + n,
-                    CentiMath::Blank => acc,
-                    _ => unreachable!()
-                }
+            let val = &m[1..].iter().rev().fold(0, |acc, e| match e {
+                CentiMath::Number(n) => acc * 10 + n,
+                CentiMath::Blank => acc,
+                _ => unreachable!(),
             });
             nums.push(val.clone());
         }
         let v = match op {
-            CentiOperator::Mul => nums.into_iter().fold(1, |acc, n| acc*n),
-            CentiOperator::Add => nums.into_iter().fold(0, |acc, n| acc+n)
+            CentiOperator::Mul => nums.into_iter().fold(1, |acc, n| acc * n),
+            CentiOperator::Add => nums.into_iter().fold(0, |acc, n| acc + n),
         };
         total += v;
     }
