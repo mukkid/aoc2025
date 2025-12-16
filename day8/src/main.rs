@@ -1,9 +1,9 @@
-use std::{arch::x86_64::_mm_unpackhi_pd, collections::HashSet};
+use std::collections::HashSet;
 
 const INPUT_STR: &str = include_str!("input.txt");
 
 fn main() {
-    let out1 = solve1(INPUT_STR);
+    let out1 = solve1(INPUT_STR, 1000);
     println!("{out1}");
 }
 
@@ -12,6 +12,7 @@ struct Junction {
     x: i32,
     y: i32,
     z: i32,
+    circuit_id: Option<usize>,
 }
 
 impl Junction {
@@ -19,7 +20,12 @@ impl Junction {
         let x = iter.next().unwrap();
         let y = iter.next().unwrap();
         let z = iter.next().unwrap();
-        Self { x, y, z }
+        Self {
+            x,
+            y,
+            z,
+            circuit_id: None,
+        }
     }
 }
 
@@ -30,57 +36,69 @@ fn distance(first: &Junction, second: &Junction) -> f32 {
         .sqrt()
 }
 
-fn create_junction_pairs(junctions: &[Junction]) -> Vec<(&Junction, &Junction, f32)> {
+fn create_junction_pairs(junctions: &[Junction]) -> Vec<(usize, usize, f32)> {
     let mut pairs = Vec::new();
-    for j1 in junctions {
-        for j2 in junctions {
-            if j1 == j2 {
-                continue;
-            }
+    for (idx, j1) in junctions.iter().enumerate() {
+        for (idx2, j2) in junctions[idx + 1..].iter().enumerate() {
             let d = distance(&j1, &j2);
-            if pairs.contains(&(j2, j1, d)) {
-                continue;
-            }
-            pairs.push((j1, j2, d));
+            pairs.push((idx, idx + 1 + idx2, d));
         }
     }
     pairs.sort_by(|p1, p2| p1.2.partial_cmp(&p2.2).unwrap());
     pairs
 }
 
-fn solve1(input_str: &str) -> usize {
+fn solve1(input_str: &str, cap: usize) -> usize {
     let mut circuits: Vec<HashSet<Junction>> = Vec::new();
-    let unmapped_junctions: Vec<Junction> = input_str
+    let mut unmapped_junctions: Vec<Junction> = input_str
         .lines()
         .map(|l| Junction::from_iter(l.splitn(3, ",").map(|c| c.parse::<i32>().unwrap())))
         .collect();
     let pairs = create_junction_pairs(&unmapped_junctions);
     let mut p_iter = pairs.into_iter();
-    let (j1, j2, _) = p_iter.next().unwrap();
-    let mut init = HashSet::new();
-    init.insert(*j1);
-    init.insert(*j2);
-    circuits.push(init);
-    let mut conn_count = 1;
-    'outer: while let Some((j1, j2, d)) = p_iter.next() {
-        if conn_count == 10 {
+    let mut conn_count = 0;
+    while let Some((idx1, idx2, _)) = p_iter.next() {
+        if conn_count >= cap {
             break;
         }
-        for hm in circuits.iter_mut() {
-            if (hm.contains(j1) && !hm.contains(j2)) || (!hm.contains(j1) && hm.contains(j2)) {
-                hm.insert(*j1);
-                hm.insert(*j2);
+        match (
+            unmapped_junctions[idx1].circuit_id,
+            unmapped_junctions[idx2].circuit_id,
+        ) {
+            (Some(i1), Some(i2)) => {
+                if i1 != i2 {
+                    unmapped_junctions[idx2].circuit_id = Some(i1);
+                    unmapped_junctions.iter_mut().for_each(|j| {
+                        if j.circuit_id == Some(i2) {
+                            j.circuit_id = Some(i1);
+                            circuits[i1].insert(*j);
+                            circuits[i2].remove(j);
+                        }
+                    });
+                    conn_count += 1;
+                }
+            }
+            (Some(circuit_idx), None) => {
+                unmapped_junctions[idx2].circuit_id = Some(circuit_idx);
+                circuits[circuit_idx].insert(unmapped_junctions[idx2]);
                 conn_count += 1;
-                continue 'outer;
-            } else if hm.contains(j1) && hm.contains(j2) {
-                continue 'outer;
+            }
+            (None, Some(circuit_idx)) => {
+                unmapped_junctions[idx1].circuit_id = Some(circuit_idx);
+                circuits[circuit_idx].insert(unmapped_junctions[idx1]);
+                conn_count += 1;
+            }
+            (None, None) => {
+                let circuit_idx = circuits.len();
+                unmapped_junctions[idx1].circuit_id = Some(circuit_idx);
+                unmapped_junctions[idx2].circuit_id = Some(circuit_idx);
+                let mut fresh_c = HashSet::new();
+                fresh_c.insert(unmapped_junctions[idx1]);
+                fresh_c.insert(unmapped_junctions[idx2]);
+                circuits.push(fresh_c);
+                conn_count += 1;
             }
         }
-        let mut fresh_c = HashSet::new();
-        fresh_c.insert(*j1);
-        fresh_c.insert(*j2);
-        circuits.push(fresh_c);
-        conn_count += 1;
     }
     circuits.sort_by_key(|k| k.len());
     circuits.iter().rev().take(3).fold(1, |a, l| a * l.len())
@@ -92,7 +110,7 @@ mod test {
 
     #[test]
     fn part1() {
-        let out = crate::solve1(TEST_STR);
+        let out = crate::solve1(TEST_STR, 10);
         assert_eq!(out, 40);
     }
 }
