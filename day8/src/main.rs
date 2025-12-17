@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 const INPUT_STR: &str = include_str!("input.txt");
 
 fn main() {
@@ -7,12 +5,11 @@ fn main() {
     println!("{out1}");
 }
 
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Junction {
     x: i32,
     y: i32,
     z: i32,
-    circuit_id: Option<usize>,
 }
 
 impl Junction {
@@ -20,12 +17,7 @@ impl Junction {
         let x = iter.next().unwrap();
         let y = iter.next().unwrap();
         let z = iter.next().unwrap();
-        Self {
-            x,
-            y,
-            z,
-            circuit_id: None,
-        }
+        Self { x, y, z }
     }
 }
 
@@ -41,67 +33,54 @@ fn create_junction_pairs(junctions: &[Junction]) -> Vec<(usize, usize, f32)> {
     for (idx, j1) in junctions.iter().enumerate() {
         for (idx2, j2) in junctions[idx + 1..].iter().enumerate() {
             let d = distance(&j1, &j2);
-            pairs.push((idx, idx + 1 + idx2, d));
+            pairs.push((idx, idx + idx2 + 1, d));
         }
     }
     pairs.sort_by(|p1, p2| p1.2.partial_cmp(&p2.2).unwrap());
     pairs
 }
 
+fn find(parent: &mut Vec<usize>, x: usize) -> usize {
+    if parent[x] != x {
+        parent[x] = find(parent, parent[x]);
+    }
+    parent[x]
+}
+
+fn union(parent: &mut Vec<usize>, size: &mut Vec<usize>, x: usize, y: usize) {
+    let px = find(parent, x);
+    let py = find(parent, y);
+    if px == py {
+        return;
+    }
+    parent[px] = py;
+    size[py] += size[px];
+}
+
 fn solve1(input_str: &str, cap: usize) -> usize {
-    let mut circuits: Vec<HashSet<Junction>> = Vec::new();
-    let mut unmapped_junctions: Vec<Junction> = input_str
+    let junctions: Vec<Junction> = input_str
         .lines()
         .map(|l| Junction::from_iter(l.splitn(3, ",").map(|c| c.parse::<i32>().unwrap())))
         .collect();
-    let pairs = create_junction_pairs(&unmapped_junctions);
-    let mut p_iter = pairs.into_iter();
-    let mut conn_count = 0;
-    while let Some((idx1, idx2, _)) = p_iter.next() {
-        if conn_count >= cap {
-            break;
-        }
-        match (
-            unmapped_junctions[idx1].circuit_id,
-            unmapped_junctions[idx2].circuit_id,
-        ) {
-            (Some(i1), Some(i2)) => {
-                if i1 != i2 {
-                    unmapped_junctions[idx2].circuit_id = Some(i1);
-                    unmapped_junctions.iter_mut().for_each(|j| {
-                        if j.circuit_id == Some(i2) {
-                            j.circuit_id = Some(i1);
-                            circuits[i1].insert(*j);
-                            circuits[i2].remove(j);
-                        }
-                    });
-                    conn_count += 1;
-                }
-            }
-            (Some(circuit_idx), None) => {
-                unmapped_junctions[idx2].circuit_id = Some(circuit_idx);
-                circuits[circuit_idx].insert(unmapped_junctions[idx2]);
-                conn_count += 1;
-            }
-            (None, Some(circuit_idx)) => {
-                unmapped_junctions[idx1].circuit_id = Some(circuit_idx);
-                circuits[circuit_idx].insert(unmapped_junctions[idx1]);
-                conn_count += 1;
-            }
-            (None, None) => {
-                let circuit_idx = circuits.len();
-                unmapped_junctions[idx1].circuit_id = Some(circuit_idx);
-                unmapped_junctions[idx2].circuit_id = Some(circuit_idx);
-                let mut fresh_c = HashSet::new();
-                fresh_c.insert(unmapped_junctions[idx1]);
-                fresh_c.insert(unmapped_junctions[idx2]);
-                circuits.push(fresh_c);
-                conn_count += 1;
-            }
+
+    let pairs = create_junction_pairs(&junctions);
+
+    let mut parent: Vec<usize> = (0..junctions.len()).collect();
+    let mut size: Vec<usize> = vec![1; junctions.len()];
+
+    for (idx1, idx2, _) in pairs.iter().take(cap) {
+        union(&mut parent, &mut size, *idx1, *idx2);
+    }
+
+    let mut component_sizes = Vec::new();
+    for i in 0..parent.len() {
+        if parent[i] == i {
+            component_sizes.push(size[i]);
         }
     }
-    circuits.sort_by_key(|k| k.len());
-    circuits.iter().rev().take(3).fold(1, |a, l| a * l.len())
+
+    component_sizes.sort_by(|a, b| b.cmp(a));
+    component_sizes.iter().take(3).product()
 }
 
 #[cfg(test)]
