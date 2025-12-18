@@ -41,26 +41,60 @@ struct Polygon {
 impl Polygon {
     fn contains(&self, vertex: Vertex) -> bool {
         if self.vertices.contains(&vertex) {
-            return true
+            return true;
         }
-        // loop the list of vertices back to form a closed loop
-        let first_wrap = [*self.vertices.last().unwrap(), *self.vertices.first().unwrap()];
-        let mut v_iter = self.vertices.windows(2).chain(std::iter::once(first_wrap.as_slice()));
-        let mut crossings = 0;
-        while let Some([v1, v2, ..]) = v_iter.next() {
-            if v1.x != v2.x {
-                continue;
+        
+        let n = self.vertices.len();
+        for i in 0..n {
+            let j = (i + 1) % n;
+            let vi = self.vertices[i];
+            let vj = self.vertices[j];
+            
+            if vi.x == vj.x && vi.x == vertex.x && 
+               vertex.y >= vi.y.min(vj.y) && vertex.y <= vi.y.max(vj.y) {
+                return true;
             }
-            if v1.x > vertex.x && v1.y.min(v2.y) <= vertex.y && vertex.y <= v1.y.max(v2.y) {
-                crossings += 1;
+            if vi.y == vj.y && vi.y == vertex.y && 
+               vertex.x >= vi.x.min(vj.x) && vertex.x <= vi.x.max(vj.x) {
+                return true;
             }
         }
-        crossings % 2 == 1
+        
+        let mut inside = false;
+        let mut j = n - 1;
+        for i in 0..n {
+            let vi = self.vertices[i];
+            let vj = self.vertices[j];
+            
+            if ((vi.y > vertex.y) != (vj.y > vertex.y)) &&
+               (vertex.x < (vj.x - vi.x) * (vertex.y - vi.y) / (vj.y - vi.y) + vi.x) {
+                inside = !inside;
+            }
+            j = i;
+        }
+        inside
     }
 }
 
+fn compress_coordinates(vertices: &[Vertex]) -> (Vec<i32>, Vec<i32>, Vec<Vertex>) {
+    let mut xs: Vec<i32> = vertices.iter().map(|v| v.x).collect();
+    let mut ys: Vec<i32> = vertices.iter().map(|v| v.y).collect();
+    xs.sort();
+    xs.dedup();
+    ys.sort();
+    ys.dedup();
+    
+    let compressed_vertices: Vec<Vertex> = vertices.iter().map(|v| {
+        let cx = xs.binary_search(&v.x).unwrap() as i32;
+        let cy = ys.binary_search(&v.y).unwrap() as i32;
+        Vertex { x: cx, y: cy }
+    }).collect();
+    
+    (xs, ys, compressed_vertices)
+}
+
 fn solve2(input_str: &str) -> i32 {
-    let p: Polygon = Polygon { vertices: input_str.lines().map(|l| {
+    let vertices: Vec<Vertex> = input_str.lines().map(|l| {
         if let Some((n1, n2)) = l.split_once(",") {
             let (x, y) = (n1.parse::<i32>().unwrap(), n2.parse::<i32>().unwrap());
             Vertex {x, y}
@@ -68,20 +102,32 @@ fn solve2(input_str: &str) -> i32 {
         else {
             panic!("Not a number");
         }
-    }).collect()};
+    }).collect();
+    
+    let (x_map, y_map, compressed_vertices) = compress_coordinates(&vertices);
+    let p = Polygon { vertices: compressed_vertices };
     let mut largest_area = 0;
-    for v1 in p.vertices[..p.vertices.len()].iter() {
-        for v2 in p.vertices[1..].iter() {
-            let corner1 = Vertex {x: v1.x, y: v2.y};
-            let corner2 = Vertex {x: v2.x, y: v1.y};
-            if p.contains(corner1) && p.contains(corner2) {
-                let dy = (v2.y - v1.y).abs() + 1;
-                let dx = (v2.x - v1.x).abs() + 1;
-                let area = dx * dy;
-                if area > largest_area {
-                    largest_area = area;
+    
+    for v1 in &p.vertices {
+        'outer: for v2 in &p.vertices {
+            if v1 == v2 { continue; }
+            let (min_x, max_x) = (v1.x.min(v2.x), v1.x.max(v2.x));
+            let (min_y, max_y) = (v1.y.min(v2.y), v1.y.max(v2.y));
+            
+            for x in min_x..=max_x {
+                if !p.contains(Vertex { x, y: min_y }) || !p.contains(Vertex { x, y: max_y }) {
+                    continue 'outer;
                 }
             }
+            for y in min_y+1..max_y {
+                if !p.contains(Vertex { x: min_x, y }) || !p.contains(Vertex { x: max_x, y }) {
+                    continue 'outer;
+                }
+            }
+            
+            let actual_area = (x_map[max_x as usize] - x_map[min_x as usize] + 1) * 
+                             (y_map[max_y as usize] - y_map[min_y as usize] + 1);
+            largest_area = largest_area.max(actual_area);
         }
     }
     largest_area
